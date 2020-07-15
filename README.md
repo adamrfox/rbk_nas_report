@@ -3,6 +3,7 @@ A script to generate a list of file names and sizes in a Rubrik NAS backup
 
 This script creates a CSV file that lists all of the files in a Rubrik fileset backup and the size of each file.  The code should run on either Python 2 or 3 and requires the Rubrik SDK library which can be installed via putty.
 
+<pre>
 Syntax is as follows:
 Usage: rbk_nas_report.py [hDl] [-b backup] [-f fileset] [-d date] [-c creds] [-o file] rubrik
 -h | --help : Prints Usage
@@ -14,6 +15,7 @@ Usage: rbk_nas_report.py [hDl] [-b backup] [-f fileset] [-d date] [-c creds] [-o
 -c | --creds= : Specify credentials.  Format is user:password
 -o | --outfile= : Write output to a file
 rubrik: Name or IP of Rubrik Cluster
+</pre>
 
 Any CLI option that is not specified on the command line will be prompted by the script.  Passwords are not echoed to the screen.
 If an output file is not specified with -o, the script will print to the screen (stdout).

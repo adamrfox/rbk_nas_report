@@ -20,3 +20,5 @@ rubrik: Name or IP of Rubrik Cluster
 Any CLI option that is not specified on the command line will be prompted by the script.  Passwords are not echoed to the screen.
 If an output file is not specified with -o, the script will print to the screen (stdout).
 File sizes are in bytes.  If other units are needed, feel free to file an issue or contibute.
+If not time is specified either with -l or -d, the script will prompt the user with a list of backups from which to choose with time stamps.
+

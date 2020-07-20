@@ -45,7 +45,7 @@ def walk_tree(rubrik, id, path, parent, delim, fh):
     done = False
     while not done:
         params = {"path": path, "offset": offset}
-        walk = rubrik.get('v1', '/fileset/snapshot/' + str(id) + '/browse', params = params)
+        walk = rubrik.get('v1', '/fileset/snapshot/' + str(id) + '/browse', params = params, timeout=60)
         for dir_ent in walk['data']:
             offset += 1
             if dir_ent == parent:
@@ -120,11 +120,11 @@ if __name__ == "__main__":
         delim = "\\"
 
     rubrik = rubrik_cdm.Connect (rubrik_node, user, password)
-    rubrik_config = rubrik.get('v1', '/cluster/me')
+    rubrik_config = rubrik.get('v1', '/cluster/me', timeout=60)
     rubrik_tz = rubrik_config['timezone']['timezone']
     local_zone = pytz.timezone(rubrik_tz)
     utz_zone = pytz.timezone('utc')
-    hs_data = rubrik.get('internal', '/host/share')
+    hs_data = rubrik.get('internal', '/host/share', timeout=60)
     for x in hs_data['data']:
         if x['hostname'] == host and x['exportPoint'] == share:
             share_id = str(x['id'])
@@ -132,10 +132,10 @@ if __name__ == "__main__":
     if share_id == "":
         sys.stderr.write("Share not found\n")
         exit (2)
-    fs_data = rubrik.get('v1', '/fileset?share_id=' + share_id + "&name=" + fileset)
+    fs_data = rubrik.get('v1', '/fileset?share_id=' + share_id + "&name=" + fileset, timeout=60)
     fs_id = str(fs_data['data'][0]['id'])
     dprint(fs_id)
-    snap_data = rubrik.get('v1', '/fileset/' + fs_id)
+    snap_data = rubrik.get('v1', '/fileset/' + fs_id, timeout=60)
     for snap in snap_data['snapshots']:
         s_time = snap['date']
         s_time = s_time[:-5]

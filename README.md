@@ -1,7 +1,7 @@
 # rbk_nas_report
 A script to generate a list of file names and sizes in a Rubrik NAS backup
 
-This script creates a CSV file that lists all of the files in a Rubrik fileset backup and the size of each file.  The code should run on either Python 2 or 3 and requires the Rubrik SDK library which can be installed via putty.
+This script creates a CSV file that lists all of the files in a Rubrik fileset backup and the size of each file.  The code should run on either Python 2 or 3 and requires the Rubrik SDK library which can be installed via pip.
 
 <pre>
 Syntax is as follows:

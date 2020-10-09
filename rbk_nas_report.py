@@ -78,12 +78,14 @@ if __name__ == "__main__":
     date = ""
     DEBUG = False
     latest = False
+    physical = False
     share_id = ""
     snap_list = []
     outfile = ""
     fh = ""
+    share = ""
 
-    optlist, args = getopt.getopt(sys.argv[1:], 'b:f:c:d:hDlo:', ['backup=', 'fileset=', 'creds=' 'date=', 'help', 'debug', '--latest', '--outfile'])
+    optlist, args = getopt.getopt(sys.argv[1:], 'b:f:c:d:hDlo:p', ['backup=', 'fileset=', 'creds=' 'date=', 'help', 'debug', '--latest', '--outfile', '--physical'])
     for opt, a in optlist:
         if opt in ('-b', '--backup'):
             backup = a
@@ -101,41 +103,58 @@ if __name__ == "__main__":
             latest = True
         if opt in ('-o', '--outfile'):
             outfile = a
+        if opt in ('-p', '--physical'):
+            physical = True
     try:
         rubrik_node = args[0]
     except:
         usage()
     if not backup:
-        backup = python_input("Backup (host:share): ")
+        if not physical:
+            backup = python_input("Backup (host:share): ")
+        else:
+            backup = python_host("Backup Host: ")
     if not fileset:
         fileset = python_input("Fileset: ")
     if not user:
         user = python_input ("User: ")
     if not password:
         password = getpass.getpass("Password: ")
-    host, share = backup.split(':')
-    if share.startswith("/"):
-        delim = "/"
+    if not physical:
+        host, share = backup.split(':')
     else:
-        delim = "\\"
+        host = backup
 
     rubrik = rubrik_cdm.Connect (rubrik_node, user, password)
     rubrik_config = rubrik.get('v1', '/cluster/me', timeout=60)
     rubrik_tz = rubrik_config['timezone']['timezone']
     local_zone = pytz.timezone(rubrik_tz)
     utz_zone = pytz.timezone('utc')
-    hs_data = rubrik.get('internal', '/host/share', timeout=60)
-    for x in hs_data['data']:
-        if x['hostname'] == host and x['exportPoint'] == share:
-            share_id = str(x['id'])
+    if not physical:
+        hs_data = rubrik.get('internal', '/host/share', timeout=60)
+        for x in hs_data['data']:
+            if x['hostname'] == host and x['exportPoint'] == share:
+                share_id = str(x['id'])
+                break
+        if share_id == "":
+            sys.stderr.write("Share not found\n")
+            exit (2)
+        fs_data = rubrik.get('v1', '/fileset?share_id=' + share_id + "&name=" + fileset, timeout=60)
+    else:
+        hs_data = rubrik.get('v1', '/host?name=' + host, timeout=60)
+        share_id = str(hs_data['data'][0]['id'])
+        os_type = str(hs_data['data'][0]['operatingSystemType'])
+        if share_id == "":
+            sys.stderr.write("Host not found\n")
+            exit(2)
+        fs_data = rubrik.get('v1', '/fileset?host_id=' + share_id, timeout=60)
+    fs_id = ""
+    for fs in fs_data['data']:
+        if fs['name'] == fileset:
+            fs_id = fs['id']
             break
-    if share_id == "":
-        sys.stderr.write("Share not found\n")
-        exit (2)
-    fs_data = rubrik.get('v1', '/fileset?share_id=' + share_id + "&name=" + fileset, timeout=60)
-    fs_id = str(fs_data['data'][0]['id'])
     dprint(fs_id)
-    snap_data = rubrik.get('v1', '/fileset/' + fs_id, timeout=60)
+    snap_data = rubrik.get('v1', '/fileset/' + str(fs_id), timeout=60)
     for snap in snap_data['snapshots']:
         s_time = snap['date']
         s_time = s_time[:-5]
@@ -169,6 +188,10 @@ if __name__ == "__main__":
                 continue
             valid = True
     dprint(snap_index_id)
+    if share.startswith("/") or os_type != "Windows":
+        delim = "/"
+    else:
+        delim = "\\"
     if outfile:
         fh = open(outfile, "w")
     walk_tree(rubrik, snap_index_id, delim, {}, delim, fh)

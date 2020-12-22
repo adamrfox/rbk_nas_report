@@ -55,7 +55,7 @@ def walk_tree(rubrik, id, path, parent, delim, fh):
                    oprint(path + str(dir_ent['filename']) + "," + str(dir_ent['size']), fh)
                 else:
                     oprint(path + delim + str(dir_ent['filename']) + "," + str(dir_ent['size']), fh)
-            elif dir_ent['fileMode'] == "directory" or dir_ent['fileNode'] == "drive":
+            elif dir_ent['fileMode'] == "directory" or dir_ent['fileMode'] == "drive":
                 if dir_ent['fileMode'] == "drive":
                     new_path = dir_ent['filename']
                 elif path == delim:
@@ -76,6 +76,7 @@ if __name__ == "__main__":
     fileset = ""
     date = ""
     DEBUG = False
+    VERBOSE = False
     latest = False
     physical = False
     share_id = ""
@@ -83,8 +84,10 @@ if __name__ == "__main__":
     outfile = ""
     fh = ""
     share = ""
+    os_type = "NAS"
+    token = ""
 
-    optlist, args = getopt.getopt(sys.argv[1:], 'b:f:c:d:hDlo:p', ['backup=', 'fileset=', 'creds=' 'date=', 'help', 'debug', '--latest', '--outfile', '--physical'])
+    optlist, args = getopt.getopt(sys.argv[1:], 'b:f:c:d:hDlo:pvt:', ['backup=', 'fileset=', 'creds=' 'date=', 'help', 'debug', 'latest', 'outfile=', 'physical', 'verbose', 'token='])
     for opt, a in optlist:
         if opt in ('-b', '--backup'):
             backup = a
@@ -104,6 +107,10 @@ if __name__ == "__main__":
             outfile = a
         if opt in ('-p', '--physical'):
             physical = True
+        if opt in ('-v', '--verbose'):
+            VERBOSE = True
+        if opt in ('-t', '--token'):
+            token = a
     try:
         rubrik_node = args[0]
     except:
@@ -115,16 +122,18 @@ if __name__ == "__main__":
             backup = python_input("Backup Host: ")
     if not fileset:
         fileset = python_input("Fileset: ")
-    if not user:
+    if not user and not token:
         user = python_input ("User: ")
-    if not password:
+    if not password and not token:
         password = getpass.getpass("Password: ")
     if not physical:
         host, share = backup.split(':')
     else:
         host = backup
-
-    rubrik = rubrik_cdm.Connect (rubrik_node, user, password)
+    if token != "":
+        rubrik = rubrik_cdm.Connect(rubrik_node, api_token=token)
+    else:
+        rubrik = rubrik_cdm.Connect (rubrik_node, user, password)
     rubrik_config = rubrik.get('v1', '/cluster/me', timeout=60)
     rubrik_tz = rubrik_config['timezone']['timezone']
     local_zone = pytz.timezone(rubrik_tz)
@@ -186,12 +195,12 @@ if __name__ == "__main__":
                 continue
             valid = True
     dprint(snap_index_id)
-    if share.startswith("/") or os_type != "Windows":
-        delim = "/"
-    else:
+    if os_type == "Windows" or not share.startswith("/"):
         delim = "\\"
+    else:
+        delim = "/"
     if outfile:
         fh = open(outfile, "w")
-    walk_tree(rubrik, snap_index_id, delim, {}, delim, fh)
+    walk_tree(rubrik, snap_index_id, '/', {}, delim, fh)
     if outfile:
         fh.close()

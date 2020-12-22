@@ -158,12 +158,13 @@ if __name__ == "__main__":
             sys.stderr.write("Host not found\n")
             exit(2)
         fs_data = rubrik.get('v1', '/fileset?host_id=' + share_id, timeout=60)
+    dprint("FS_DATA: " + str(fs_data))
     fs_id = ""
     for fs in fs_data['data']:
         if fs['name'] == fileset:
             fs_id = fs['id']
             break
-    dprint(fs_id)
+    dprint("FS_ID = " + fs_id)
     snap_data = rubrik.get('v1', '/fileset/' + str(fs_id), timeout=60)
     for snap in snap_data['snapshots']:
         s_time = snap['date']
@@ -197,12 +198,14 @@ if __name__ == "__main__":
                 continue
             valid = True
     dprint(snap_index_id)
-    if os_type == "Windows" or (os_type == "NAS" and not share.startswith("/")):
-        delim = "\\"
-    else:
-        delim = "/"
     if outfile:
         fh = open(outfile, "w")
+    if os_type == "Windows" or (os_type == "NAS" and not share.startswith("/")):
+        delim = "\\"
+        if os_type == "NAS":
+            walk_tree(rubrik, snap_index_id, '\\', {}, delim, fh)
+    else:
+        delim = "/"
     walk_tree(rubrik, snap_index_id, '/', {}, delim, fh)
     if outfile:
         fh.close()

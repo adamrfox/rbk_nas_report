@@ -68,7 +68,6 @@ def walk_tree(rubrik, id, path, parent, delim, fh):
         else:
             dprint("HASMORE: " + str(offset))
 
-
 if __name__ == "__main__":
     backup = ""
     rubrik = ""
@@ -113,7 +112,7 @@ if __name__ == "__main__":
         if not physical:
             backup = python_input("Backup (host:share): ")
         else:
-            backup = python_host("Backup Host: ")
+            backup = python_input("Backup Host: ")
     if not fileset:
         fileset = python_input("Fileset: ")
     if not user:
@@ -174,7 +173,6 @@ if __name__ == "__main__":
             sys.stderr.write("Can't find backup at date: " + date + "\n")
             sys.stderr.write("Date format is 'YYYY-MM-DD HH:MM'\n")
             exit(1)
-
     else:
         for i, snap in enumerate(snap_list):
             print(str(i) + ": " + str(snap[1]) + " [" + str(snap[0]) + "]")

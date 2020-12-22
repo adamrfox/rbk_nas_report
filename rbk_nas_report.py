@@ -11,14 +11,16 @@ import datetime
 import pytz
 
 def usage():
-    sys.stderr.write("Usage: rbk_nas_report.py [hDl] [-b backup] [-f fileset] [-d date] [-c creds] [-o file] rubrik\n")
+    sys.stderr.write("Usage: rbk_nas_report.py [hDlp] [-b backup] [-f fileset] [-d date] [-c creds] [-t token] [-o file] rubrik\n")
     sys.stderr.write("-h | --help : Prints Usage\n")
     sys.stderr.write("-D | --debug : Prints debug messages\n")
     sys.stderr.write("-l | --latest : Use latest backup\n")
+    sys.stderr.write("-p | --physical : Fileset is physical\n")
     sys.stderr.write("-b | --backup= : Specify a share.  Format is host:share\n")
     sys.stderr.write("-f | --fileset= : Specify a fileset name\n")
     sys.stderr.write("-d | --date= : Specify a specific date.  Format is 'YYYY-MM-DD HH:MM'\n")
     sys.stderr.write("-c | --creds= : Specify credentials.  Format is user:password\n")
+    sys.stderr.write("-t | --token= | Use an API token instead of user/password\n")
     sys.stderr.write("-o | --outfile= : Write output to a file\n")
     sys.stderr.write("rubrik: Name or IP of Rubrik Cluster\n")
     exit (0)

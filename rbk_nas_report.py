@@ -195,7 +195,7 @@ if __name__ == "__main__":
                 continue
             valid = True
     dprint(snap_index_id)
-    if os_type == "Windows" or not share.startswith("/"):
+    if os_type == "Windows" or (os_type == "NAS" and not share.startswith("/")):
         delim = "\\"
     else:
         delim = "/"

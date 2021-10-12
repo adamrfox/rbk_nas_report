@@ -129,14 +129,19 @@ def get_rubrik_nodes(rubrik, user, password, token):
     return(node_list)
 
 def usage():
-    sys.stderr.write("Usage: rbk_nas_inc_report.py [-hDr] [-b backup] [-f fileset] [-c creds] rubrik\n")
+    sys.stderr.write("Usage: rbk_nas_report.py [-hDrpal] [-b backup] [-f fileset] [-c creds] [-d date] [-m max_threads] -o outfile rubrik\n")
     sys.stderr.write("-h | --help : Prints Usage\n")
     sys.stderr.write("-D | --debug : Debug mode.  Prints more information\n")
-    sys.stderr.write("-o | --output : Specify an output file.  Only used with Report Mode\n")
-    sys.stderr.write("-b | --backup : Specify a NAS backup.  Format is server:share\n")
+    sys.stderr.write("-o | --output : Specify an output file.  Don't include an extention. [REQUIRED]\n")
+    sys.stderr.write("-b | --backup : Specify backup.  Format is server:share for NAS, host for physical\n")
     sys.stderr.write("-f | --fileset : Specify a fileset for the share\n")
     sys.stderr.write("-c | --creds : Specify cluster credentials.  Not secure.  Format is user:password\n")
     sys.stderr.write("-t | --token : Use an API token instead of credentials\n")
+    sys.stderr.write("-m | --max_threads: Specify a maximum number of threads\n")
+    sys.stderr.write("-p | --physical : Specify a physical fileset backup [default: NAS]\n")
+    sys.stderr.write("-l | --latest : Use the latest backup of the fileset\n")
+    sys.stderr.write("-d | --date : Specify the exact date of the desired backup\n")
+    sys.stderr.write("-a | --all : Report all files in backup.  Default is only files backed up in that specific backkup\n")
     sys.stderr.write("rubrik : Name or IP of the Rubrik Cluster\n")
     exit (0)
 
@@ -252,7 +257,7 @@ if __name__ == "__main__":
         rubrik_cluster.append({'session': rubrik, 'name': rubrik_config['name']})
     if max_threads == 0:
         max_threads = 10*len(rubrik_cluster)
-    print("Using " + str(max_threads) + " threads across " + str(len(rubrik_cluster)) + " nodes.")
+    print("Using up to " + str(max_threads) + " threads across " + str(len(rubrik_cluster)) + " nodes.")
     if not physical:
         hs_data = rubrik.get('internal', '/host/share', timeout=timeout)
         for x in hs_data['data']:

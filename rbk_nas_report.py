@@ -129,7 +129,7 @@ def get_rubrik_nodes(rubrik, user, password, token):
     return(node_list)
 
 def usage():
-    sys.stderr.write("Usage: rbk_nas_report.py [-hDrpasl] [-b backup] [-f fileset] [-c creds] [-d date] [-m max_threads] -o outfile rubrik\n")
+    sys.stderr.write("Usage: rbk_nas_report.py [-hDrpasl] [-b backup] [-f fileset] [-c creds] [-t token] [-d date] [-m max_threads] -o outfile rubrik\n")
     sys.stderr.write("-h | --help : Prints Usage\n")
     sys.stderr.write("-D | --debug : Debug mode.  Prints more information\n")
     sys.stderr.write("-o | --output : Specify an output file.  Don't include an extention. [REQUIRED]\n")

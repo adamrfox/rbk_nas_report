@@ -177,9 +177,9 @@ if __name__ == "__main__":
     SINGLE_NODE = False
 
 
-    optlist, args = getopt.getopt(sys.argv[1:], 'ab:f:c:d:hDst:o:m:vpl', ["backup=", "fileset=", "creds=", "date=",
+    optlist, args = getopt.getopt(sys.argv[1:], 'ab:f:c:d:hDst:o:m:vpls', ["backup=", "fileset=", "creds=", "date=",
                                                                         "help", "debug",  "token=", "output=",
-                                                                        "--physical", "--all", "--latest"])
+                                                                        "--physical", "--all", "--latest", '--single_node'])
     for opt, a in optlist:
         if opt in ("-b", "--backup"):
             backup = a
@@ -211,6 +211,8 @@ if __name__ == "__main__":
             ALL_FILES = True
         if opt in ('-l', '--latest'):
             latest = True
+        if opt in ('-s', '--single_node'):
+            SINGLE_NODE = True
     try:
         rubrik_node = args[0]
     except:

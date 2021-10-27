@@ -35,7 +35,7 @@ def walk_tree (rubrik, id, inc_date, delim, path, parent, files_to_restore, outf
     job_id = str(outfile) + str(job_path_s) + '.part'
     fh = open(job_id, "w")
     while not done:
-        job_ptr = randrange(len(rubrik_cluster)-1)
+        job_ptr = randrange(len(rubrik_cluster))
         params = {"path": path, "offset": offset}
         if offset == 0:
             if VERBOSE:

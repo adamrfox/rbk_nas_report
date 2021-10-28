@@ -42,6 +42,8 @@ def walk_tree (rubrik, id, inc_date, delim, path, parent, files_to_restore, outf
                 print("Starting job " + path + " on " + rubrik_cluster[job_ptr]['name'])
             else:
                 print (' . ', end='')
+        dprint("BROWSE: " + '/fileset/snapshot/' + str(id) + '/browse')
+        dprint("PARAMS: " + str(params) + "\n")
         rbk_walk = rubrik.get('v1', '/fileset/snapshot/' + str(id) + '/browse', params=params, timeout=timeout)
         for dir_ent in rbk_walk['data']:
             offset += 1
@@ -90,7 +92,9 @@ def get_job_time(snap_list, id):
 
 def dprint(message):
     if DEBUG:
-        print(message + "\n")
+        dfh = open(debug_log, 'a')
+        dfh.write(message + "\n")
+        dfh.close()
     return()
 
 def oprint(message, fh):
@@ -196,6 +200,8 @@ if __name__ == "__main__":
             date_dt_s = datetime.datetime.strftime(date_dt, "%Y-%m-%d %H:%M:%S")
         if opt in ("-D", "--debug"):
             DEBUG = True
+            dfh = open(debug_log, "w")
+            dfh.close()
         if opt in ("-t", "--token"):
             token = a
         if opt in ("-o", "--outout"):
@@ -280,6 +286,7 @@ if __name__ == "__main__":
             delim = "\\"
         else:
             delim = "/"
+        dprint("DELIM: " + delim)
         if share_id == "":
             sys.stderr.write("Host not found\n")
             exit(2)

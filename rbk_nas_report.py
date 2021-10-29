@@ -30,7 +30,10 @@ def walk_tree (rubrik, id, inc_date, delim, path, parent, files_to_restore, outf
     offset = 0
     done = False
     file_count = 0
-    job_path = path.split(delim)
+    if delim == "\\" and path == "/":
+        job_path = path.split(path)
+    else:
+        job_path = path.split(delim)
     job_path_s = '_'.join(job_path)
     job_id = str(outfile) + str(job_path_s) + '.part'
     fh = open(job_id, "w")
@@ -180,6 +183,7 @@ if __name__ == "__main__":
     debug_log = "debug_log.txt"
     large_trees = queue.Queue()
     SINGLE_NODE = False
+    start_path = "/"
 
 
     optlist, args = getopt.getopt(sys.argv[1:], 'ab:f:c:d:hDst:o:m:vpls', ["backup=", "fileset=", "creds=", "date=",
@@ -284,6 +288,7 @@ if __name__ == "__main__":
         dprint("OS_TYPE: " + os_type)
         if os_type == "Windows":
             delim = "\\"
+            start_path = "/"
         else:
             delim = "/"
         dprint("DELIM: " + delim)
@@ -348,7 +353,7 @@ if __name__ == "__main__":
     files_to_restore = []
     dprint("INDEX: " + str(current_index) + "// DATE: " + str(inc_date_epoch))
     threading.Thread( name=outfile, target = walk_tree, args=(rubrik, snap_list[current_index][0], inc_date_epoch,
-                                                                delim, delim, {}, files_to_restore, outfile)).start()
+                                                                delim, start_path, {}, files_to_restore, outfile)).start()
     print("Waiting for jobs to queue")
     time.sleep(10)
     while not job_queue.empty() or (job_queue.empty and threading.activeCount() > 1):

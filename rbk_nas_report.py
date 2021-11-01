@@ -18,6 +18,7 @@ except ImportError:
     import Queue as queue
 import shutil
 from random import randrange
+from pprint import pprint
 
 def python_input(message):
     if int(sys.version[0]) > 2:
@@ -35,7 +36,7 @@ def walk_tree (rubrik, id, inc_date, delim, path, parent, files_to_restore, outf
     job_id = str(outfile) + str(job_path_s) + '.part'
     fh = open(job_id, "w")
     while not done:
-        job_ptr = randrange(len(rubrik_cluster)-1)
+        job_ptr = randrange(len(rubrik_cluster))
         params = {"path": path, "offset": offset}
         if offset == 0:
             if VERBOSE:
@@ -91,7 +92,9 @@ def get_job_time(snap_list, id):
 
 def dprint(message):
     if DEBUG:
-        print(message + "\n")
+        dfh = open(debug_log, 'a')
+        dfh.write(message + "\n")
+        dfh.close()
     return()
 
 def oprint(message, fh):
@@ -103,7 +106,7 @@ def oprint(message, fh):
 def log_clean(name):
     files = os.listdir('.')
     for f in files:
-        if f.startswith(name) and f.endswith('.part'):
+        if f.startswith(name) and (f.endswith('.part') or f.endswith('.head')):
             os.remove(f)
 
 def get_rubrik_nodes(rubrik, user, password, token):
@@ -131,22 +134,27 @@ def get_rubrik_nodes(rubrik, user, password, token):
 
 def log_job_activity(rubrik, outfile, fs_id, snap_data):
     ev_series_id = ""
-    print(snap_data)
+    event_series_id_save = ""
+    dprint(str(snap_data))
     snap_time_dt = datetime.datetime.strptime(snap_data[1], "%Y-%m-%d %H:%M:%S")
     snap_time_epoch = (snap_time_dt - datetime.datetime(1970, 1, 1)).total_seconds()
+    dprint(str(snap_time_epoch))
     events = rubrik.get('v1', '/event/latest?limit=1024&event_type=Backup&object_ids=' + str(fs_id), timeout=timeout)
     for ev in events['data']:
-        if ev['eventSeriesStatus'] not in ('Success', 'Failure', 'SuccessWithWarnings'):
+        if ev['latestEvent']['eventType'] != "Backup" or ev['eventSeriesStatus'] not in ('Success', 'Failure', 'SuccessWithWarnings'):
             continue
         ev_dt = datetime.datetime.strptime(ev['latestEvent']['time'][:-5], "%Y-%m-%dT%H:%M:%S")
         ev_dt_epoch = (ev_dt - datetime.datetime(1970,1,1)).total_seconds()
-        if ev_dt_epoch > snap_time_epoch:
-            ev_series_id = ev['latestEvent']['eventSeriesId']
+        dprint("EV_DT: " + str(ev_dt_epoch))
+        if ev_dt_epoch < snap_time_epoch:
+            ev_series_id = event_series_id_save
+            dprint("selected")
             break
-    dprint("EVENT_SERIES_ID: " + ev_series_id)
+        else:
+            event_series_id_save = ev['latestEvent']['eventSeriesId']
     if not ev_series_id:
-        sys.stderr.write("Can't find event series ID for job\n")
-        exit(5)
+        ev_series_id = event_series_id_save
+    dprint("EVENT_SERIES_ID: " + ev_series_id)
     event_series = rubrik.get('v1', '/event_series/' + str(ev_series_id), timeout=timeout)
     hfp = open(outfile + '.head', "w")
     hfp.write('Backup:' + event_series['location'] + '\n')
@@ -233,6 +241,8 @@ if __name__ == "__main__":
             date_dt_s = datetime.datetime.strftime(date_dt, "%Y-%m-%d %H:%M:%S")
         if opt in ("-D", "--debug"):
             DEBUG = True
+            dfh = open(debug_log, "w")
+            dfh.close()
         if opt in ("-t", "--token"):
             token = a
         if opt in ("-o", "--outout"):
@@ -253,7 +263,7 @@ if __name__ == "__main__":
             SINGLE_NODE = True
         if opt in ('-F', '--format'):
             if a.lower() == "csv" or a.lower() == "log":
-                LOG_FORMAT = a
+                LOG_FORMAT = a.lower()
             else:
                 sys.stderr.write("Invalid log format.  Must be csv,log\n")
                 exit(3)
@@ -301,6 +311,7 @@ if __name__ == "__main__":
         rubrik_cluster = get_rubrik_nodes(rubrik, user, password, token)
     else:
         rubrik_cluster.append({'session': rubrik, 'name': rubrik_config['name']})
+    dprint(str(rubrik_cluster))
     if max_threads == 0:
         max_threads = 10*len(rubrik_cluster)
     print("Using up to " + str(max_threads) + " threads across " + str(len(rubrik_cluster)) + " nodes.")
@@ -403,7 +414,7 @@ if __name__ == "__main__":
     print("\nGenerating Report")
     log_parts = [f for f in os.listdir('.') if f.startswith(outfile) and f.endswith('.part')]
     log_parts.sort()
-    with open(outfile + '.csv', 'wb') as rfh:
+    with open(outfile + '.' + LOG_FORMAT, 'wb') as rfh:
         if LOG_FORMAT == "log":
             with open(outfile + '.head', 'rb') as hfh:
                 shutil.copyfileobj(hfh, rfh)

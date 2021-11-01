@@ -30,30 +30,26 @@ def walk_tree (rubrik, id, inc_date, delim, path, parent, files_to_restore, outf
     offset = 0
     done = False
     file_count = 0
-    if delim == "\\" and path == "/":
-        job_path = path.split(path)
-    else:
-        job_path = path.split(delim)
+    job_path = path.split(delim)
     job_path_s = '_'.join(job_path)
     job_id = str(outfile) + str(job_path_s) + '.part'
     fh = open(job_id, "w")
     while not done:
-        job_ptr = randrange(len(rubrik_cluster))
+        job_ptr = randrange(len(rubrik_cluster)-1)
         params = {"path": path, "offset": offset}
         if offset == 0:
             if VERBOSE:
                 print("Starting job " + path + " on " + rubrik_cluster[job_ptr]['name'])
             else:
                 print (' . ', end='')
-        dprint("BROWSE: " + '/fileset/snapshot/' + str(id) + '/browse')
-        dprint("PARAMS: " + str(params) + "\n")
         rbk_walk = rubrik.get('v1', '/fileset/snapshot/' + str(id) + '/browse', params=params, timeout=timeout)
+        file_count = 0
         for dir_ent in rbk_walk['data']:
             offset += 1
+            file_count += 1
             if dir_ent == parent:
                 return
             if dir_ent['fileMode'] == "file":
-                file_count += 1
                 file_date_dt = datetime.datetime.strptime(dir_ent['lastModified'][:-5], "%Y-%m-%dT%H:%M:%S")
                 file_date_epoch = (file_date_dt - datetime.datetime(1970, 1, 1)).total_seconds()
                 if file_date_epoch > inc_date:
@@ -95,9 +91,7 @@ def get_job_time(snap_list, id):
 
 def dprint(message):
     if DEBUG:
-        dfh = open(debug_log, 'a')
-        dfh.write(message + "\n")
-        dfh.close()
+        print(message + "\n")
     return()
 
 def oprint(message, fh):
@@ -134,6 +128,41 @@ def get_rubrik_nodes(rubrik, user, password, token):
             except KeyError:
                 node_list.append({'session': rbk_session, 'name': n['node']})
     return(node_list)
+
+def log_job_activity(rubrik, outfile, fs_id, snap_data):
+    ev_series_id = ""
+    print(snap_data)
+    snap_time_dt = datetime.datetime.strptime(snap_data[1], "%Y-%m-%d %H:%M:%S")
+    snap_time_epoch = (snap_time_dt - datetime.datetime(1970, 1, 1)).total_seconds()
+    events = rubrik.get('v1', '/event/latest?limit=1024&event_type=Backup&object_ids=' + str(fs_id), timeout=timeout)
+    for ev in events['data']:
+        if ev['eventSeriesStatus'] not in ('Success', 'Failure', 'SuccessWithWarnings'):
+            continue
+        ev_dt = datetime.datetime.strptime(ev['latestEvent']['time'][:-5], "%Y-%m-%dT%H:%M:%S")
+        ev_dt_epoch = (ev_dt - datetime.datetime(1970,1,1)).total_seconds()
+        if ev_dt_epoch > snap_time_epoch:
+            ev_series_id = ev['latestEvent']['eventSeriesId']
+            break
+    dprint("EVENT_SERIES_ID: " + ev_series_id)
+    if not ev_series_id:
+        sys.stderr.write("Can't find event series ID for job\n")
+        exit(5)
+    event_series = rubrik.get('v1', '/event_series/' + str(ev_series_id), timeout=timeout)
+    hfp = open(outfile + '.head', "w")
+    hfp.write('Backup:' + event_series['location'] + '\n')
+    hfp.write('Started: ' + event_series['startTime'][:-5] + '\n')
+    hfp.write('Ended: ' + event_series['endTime'][:-5] + '\n')
+    hfp.write('Duration: ' + event_series['duration'] + '\n')
+    hfp.write('Logical Size: ' + str(event_series['logicalSize']) + '\n')
+    hfp.write('Throughput: ' + str(event_series['throughput']) + ' Bps\n\n')
+    for e in reversed(event_series['eventDetailList']):
+        e_dt = datetime.datetime.strptime(e['time'][:-5], "%Y-%m-%dT%H:%M:%S")
+        e_dt_s = datetime.datetime.strftime(e_dt, "%Y-%m-%d %H:%M:%S")
+        message_list = e['eventInfo'].split('"')
+        message = message_list[3].replace('\\\\', '\\')
+        hfp.write(e_dt_s + ' ' + e['eventSeverity'] + ' ' + message + '\n')
+    hfp.write('\n')
+    hfp.close()
 
 def usage():
     sys.stderr.write("Usage: rbk_nas_report.py [-hDrpasl] [-b backup] [-f fileset] [-c creds] [-t token] [-d date] [-m max_threads] -o outfile rubrik\n")
@@ -183,10 +212,10 @@ if __name__ == "__main__":
     debug_log = "debug_log.txt"
     large_trees = queue.Queue()
     SINGLE_NODE = False
-    start_path = "/"
+    LOG_FORMAT = "csv"
 
 
-    optlist, args = getopt.getopt(sys.argv[1:], 'ab:f:c:d:hDst:o:m:vpls', ["backup=", "fileset=", "creds=", "date=",
+    optlist, args = getopt.getopt(sys.argv[1:], 'ab:f:c:d:hDst:o:m:vplsF:', ["backup=", "fileset=", "creds=", "date=",
                                                                         "help", "debug",  "token=", "output=",
                                                                         "--physical", "--all", "--latest", '--single_node'])
     for opt, a in optlist:
@@ -204,8 +233,6 @@ if __name__ == "__main__":
             date_dt_s = datetime.datetime.strftime(date_dt, "%Y-%m-%d %H:%M:%S")
         if opt in ("-D", "--debug"):
             DEBUG = True
-            dfh = open(debug_log, "w")
-            dfh.close()
         if opt in ("-t", "--token"):
             token = a
         if opt in ("-o", "--outout"):
@@ -224,6 +251,12 @@ if __name__ == "__main__":
             latest = True
         if opt in ('-s', '--single_node'):
             SINGLE_NODE = True
+        if opt in ('-F', '--format'):
+            if a.lower() == "csv" or a.lower() == "log":
+                LOG_FORMAT = a
+            else:
+                sys.stderr.write("Invalid log format.  Must be csv,log\n")
+                exit(3)
     try:
         rubrik_node = args[0]
     except:
@@ -288,10 +321,8 @@ if __name__ == "__main__":
         dprint("OS_TYPE: " + os_type)
         if os_type == "Windows":
             delim = "\\"
-            start_path = "/"
         else:
             delim = "/"
-        dprint("DELIM: " + delim)
         if share_id == "":
             sys.stderr.write("Host not found\n")
             exit(2)
@@ -341,9 +372,8 @@ if __name__ == "__main__":
         if not go_s.startswith('Y') and not go_s.startswith('y'):
             exit (0)
     current_index = int(start_index)
-    snap_info = rubrik.get('v1', '/fileset/snapshot/' + str(snap_list[current_index][0]), timeout=timeout)
-    inc_date = datetime.datetime.strptime(snap_info['date'][:-5], "%Y-%m-%dT%H:%M:%S")
-    inc_date_epoch = (inc_date - datetime.datetime(1970, 1, 1)).total_seconds()
+    if LOG_FORMAT == "log":
+        log_job_activity(rubrik, outfile, fs_id, snap_list[current_index])
     if current_index == 0 or ALL_FILES:
         inc_date_epoch = 0
     else:
@@ -353,7 +383,7 @@ if __name__ == "__main__":
     files_to_restore = []
     dprint("INDEX: " + str(current_index) + "// DATE: " + str(inc_date_epoch))
     threading.Thread( name=outfile, target = walk_tree, args=(rubrik, snap_list[current_index][0], inc_date_epoch,
-                                                                delim, start_path, {}, files_to_restore, outfile)).start()
+                                                                delim, delim, {}, files_to_restore, outfile)).start()
     print("Waiting for jobs to queue")
     time.sleep(10)
     while not job_queue.empty() or (job_queue.empty and threading.activeCount() > 1):
@@ -374,6 +404,10 @@ if __name__ == "__main__":
     log_parts = [f for f in os.listdir('.') if f.startswith(outfile) and f.endswith('.part')]
     log_parts.sort()
     with open(outfile + '.csv', 'wb') as rfh:
+        if LOG_FORMAT == "log":
+            with open(outfile + '.head', 'rb') as hfh:
+                shutil.copyfileobj(hfh, rfh)
+            hfh.close()
         for p in log_parts:
             with open(p, 'rb') as pfh:
                 shutil.copyfileobj(pfh, rfh)

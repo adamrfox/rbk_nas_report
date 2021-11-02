@@ -38,19 +38,16 @@ def walk_tree (rubrik, id, inc_date, delim, path, parent, files_to_restore, outf
     job_path_s = '_'.join(job_path)
     job_path_s = job_path_s.replace(':', '_')
     job_id = str(outfile) + str(job_path_s) + '.part'
-    dprint("OPENING " + job_id)
     fh = open(job_id, "w")
     while not done:
         job_ptr = randrange(len(rubrik_cluster))
         params = {"path": path, "offset": offset}
-        dprint("PARAMS:" + str(params))
         if offset == 0:
             if VERBOSE:
                 print("Starting job " + path + " on " + rubrik_cluster[job_ptr]['name'])
             else:
                 print (' . ', end='')
         rbk_walk = rubrik.get('v1', '/fileset/snapshot/' + str(id) + '/browse', params=params, timeout=timeout)
-        dprint("PATH: " + path + ": " + str(rbk_walk))
         file_count = 0
         for dir_ent in rbk_walk['data']:
             offset += 1
@@ -64,11 +61,9 @@ def walk_tree (rubrik, id, inc_date, delim, path, parent, files_to_restore, outf
                 if file_date_epoch > inc_date:
                     if path != delim:
 #                        files_to_restore.append(path + delim + dir_ent['filename'])
-                        dprint("P: " + path + delim + str(dir_ent['filename']) + "," + str(dir_ent['size']))
                         oprint(path + delim + str(dir_ent['filename']) + "," + str(dir_ent['size']), fh)
                     else:
 #                        files_to_restore.append(path + dir_ent['filename'])
-                        dprint("P: " + path + str(dir_ent['filename']) + "," + str(dir_ent['size']))
                         oprint(path + str(dir_ent['filename']) + "," + str(dir_ent['size']), fh)
             elif dir_ent['fileMode'] == "directory" or dir_ent['fileMode'] == "drive":
                 if dir_ent['fileMode'] == "drive":
@@ -90,7 +85,6 @@ def walk_tree (rubrik, id, inc_date, delim, path, parent, files_to_restore, outf
     if file_count == 200000:
         large_trees.put(path)
     fh.close()
-    dprint("CLOSED " + job_id)
 
 def get_job_time(snap_list, id):
     time = ""

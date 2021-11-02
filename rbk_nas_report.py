@@ -31,7 +31,10 @@ def walk_tree (rubrik, id, inc_date, delim, path, parent, files_to_restore, outf
     offset = 0
     done = False
     file_count = 0
-    job_path = path.split(delim)
+    if delim == "\\" and path == "/":
+        job_path = path.split(path)
+    else:
+        job_path = path.split(delim)
     job_path_s = '_'.join(job_path)
     job_id = str(outfile) + str(job_path_s) + '.part'
     fh = open(job_id, "w")
@@ -298,6 +301,7 @@ if __name__ == "__main__":
             delim = "/"
         else:
             delim = "\\"
+        initial_path = delim
 #
 # Find the latest snapshot for the share and  determine the date (2nd newest snap) or use the one provided by the user
 #
@@ -336,6 +340,7 @@ if __name__ == "__main__":
             delim = "\\"
         else:
             delim = "/"
+        initial_path = "/"
         if share_id == "":
             sys.stderr.write("Host not found\n")
             exit(2)
@@ -396,7 +401,7 @@ if __name__ == "__main__":
     files_to_restore = []
     dprint("INDEX: " + str(current_index) + "// DATE: " + str(inc_date_epoch))
     threading.Thread( name=outfile, target = walk_tree, args=(rubrik, snap_list[current_index][0], inc_date_epoch,
-                                                                delim, delim, {}, files_to_restore, outfile)).start()
+                                                                delim, initial_path, {}, files_to_restore, outfile)).start()
     print("Waiting for jobs to queue")
     time.sleep(10)
     while not job_queue.empty() or (job_queue.empty and threading.activeCount() > 1):

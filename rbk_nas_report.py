@@ -58,6 +58,7 @@ def walk_tree (rubrik, id, inc_date, delim, path, parent, files_to_restore, outf
             if dir_ent['fileMode'] == "file":
                 file_date_dt = datetime.datetime.strptime(dir_ent['lastModified'][:-5], "%Y-%m-%dT%H:%M:%S")
                 file_date_epoch = (file_date_dt - datetime.datetime(1970, 1, 1)).total_seconds()
+                dprint("FILE: " + str(dir_ent['filename'] + " : " + str(file_date_epoch) + " : " + str(inc_date)))
                 if file_date_epoch > inc_date:
                     if path != delim:
 #                        files_to_restore.append(path + delim + dir_ent['filename'])

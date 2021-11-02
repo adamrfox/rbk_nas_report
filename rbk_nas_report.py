@@ -38,12 +38,14 @@ def walk_tree (rubrik, id, inc_date, delim, path, parent, files_to_restore, outf
     while not done:
         job_ptr = randrange(len(rubrik_cluster))
         params = {"path": path, "offset": offset}
+        dprint("PARAMS:" + str(params))
         if offset == 0:
             if VERBOSE:
                 print("Starting job " + path + " on " + rubrik_cluster[job_ptr]['name'])
             else:
                 print (' . ', end='')
         rbk_walk = rubrik.get('v1', '/fileset/snapshot/' + str(id) + '/browse', params=params, timeout=timeout)
+        dprint("PATH: " + path + ": " + str(rbk_walk))
         file_count = 0
         for dir_ent in rbk_walk['data']:
             offset += 1

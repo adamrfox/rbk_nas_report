@@ -36,6 +36,7 @@ def walk_tree (rubrik, id, inc_date, delim, path, parent, files_to_restore, outf
     else:
         job_path = path.split(delim)
     job_path_s = '_'.join(job_path)
+    job_path_s = job_path_s.replace(':', '_')
     job_id = str(outfile) + str(job_path_s) + '.part'
     dprint("OPENING " + job_id)
     fh = open(job_id, "w")

@@ -47,7 +47,7 @@ def walk_tree (rubrik, id, inc_date, delim, path, parent, files_to_restore, outf
                 print("Starting job " + path + " on " + rubrik_cluster[job_ptr]['name'])
             else:
                 print (' . ', end='')
-        rbk_walk = rubrik.get('v1', '/fileset/snapshot/' + str(id) + '/browse', params=params, timeout=timeout)
+        rbk_walk = rubrik_cluster[job_ptr]['session'].get('v1', '/fileset/snapshot/' + str(id) + '/browse', params=params, timeout=timeout)
         file_count = 0
         for dir_ent in rbk_walk['data']:
             offset += 1
@@ -178,7 +178,7 @@ def log_job_activity(rubrik, outfile, fs_id, snap_data):
     hfp.close()
 
 def usage():
-    sys.stderr.write("Usage: rbk_nas_report.py [-hDrpasl] [-b backup] [-f fileset] [-c creds] [-t token] [-d date] [-m max_threads] -o outfile rubrik\n")
+    sys.stderr.write("Usage: rbk_nas_report.py [-hDrpasl] [-b backup] [-f fileset] [-c creds] [-t token] [-d date] [-m max_threads | -M thread_factor] -o outfile rubrik\n")
     sys.stderr.write("-h | --help : Prints Usage\n")
     sys.stderr.write("-D | --debug : Debug mode.  Prints more information\n")
     sys.stderr.write("-o | --output : Specify an output file.  Don't include an extention. [REQUIRED]\n")
@@ -186,7 +186,8 @@ def usage():
     sys.stderr.write("-f | --fileset : Specify a fileset for the share\n")
     sys.stderr.write("-c | --creds : Specify cluster credentials.  Not secure.  Format is user:password\n")
     sys.stderr.write("-t | --token : Use an API token instead of credentials\n")
-    sys.stderr.write("-m | --max_threads: Specify a maximum number of threads\n")
+    sys.stderr.write("-M | --thread_factor: Specify the number of threads per node [def:10]\n")
+    sys.stderr.write("-m | --max_threads: Specify a maximum number of threads.  Overrides thread factor.\n")
     sys.stderr.write("-p | --physical : Specify a physical fileset backup [default: NAS]\n")
     sys.stderr.write("-s | --single_node : Only use one node of the Rubrik clsuter for API calls\n")
     sys.stderr.write("-l | --latest : Use the latest backup of the fileset\n")
@@ -222,14 +223,15 @@ if __name__ == "__main__":
     rubrik_cluster = []
     job_queue = queue.Queue()
     max_threads = 0
+    thread_factor = 10
     debug_log = "debug_log.txt"
     large_trees = queue.Queue()
     SINGLE_NODE = False
     LOG_FORMAT = "csv"
 
 
-    optlist, args = getopt.getopt(sys.argv[1:], 'ab:f:c:d:hDst:o:m:vplsF:', ["backup=", "fileset=", "creds=", "date=",
-                                                                        "help", "debug",  "token=", "output=",
+    optlist, args = getopt.getopt(sys.argv[1:], 'ab:f:c:d:hDst:o:m:M:vplsF:', ["backup=", "fileset=", "creds=", "date=",
+                                                                        "help", "debug",  "token=", "output=", "max_threads=",
                                                                         "--physical", "--all", "--latest", '--single_node'])
     for opt, a in optlist:
         if opt in ("-b", "--backup"):
@@ -256,6 +258,8 @@ if __name__ == "__main__":
             SINGLE_NODE = True
         if opt in ('-m', '--max_threads'):
             max_threads = int(a)
+        if opt in ('-M', '--thread_factor'):
+            thread_factor = int(a)
         if opt in ('-v', '--verbose'):
             VERBOSE = True
         if opt in ('-p' , '--physical'):
@@ -319,7 +323,7 @@ if __name__ == "__main__":
         rubrik_cluster.append({'session': rubrik, 'name': rubrik_config['name']})
     dprint(str(rubrik_cluster))
     if max_threads == 0:
-        max_threads = 10*len(rubrik_cluster)
+        max_threads = thread_factor*len(rubrik_cluster)
     print("Using up to " + str(max_threads) + " threads across " + str(len(rubrik_cluster)) + " nodes.")
     if not physical:
         hs_data = rubrik.get('internal', '/host/share', timeout=timeout)

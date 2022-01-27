@@ -57,7 +57,7 @@ def walk_tree (rubrik, id, inc_date, delim, path, parent, files_to_restore, outf
             if dir_ent['fileMode'] == "file":
                 file_date_dt = datetime.datetime.strptime(dir_ent['lastModified'][:-5], "%Y-%m-%dT%H:%M:%S")
                 file_date_epoch = (file_date_dt - datetime.datetime(1970, 1, 1)).total_seconds()
-                dprint("FILE: " + str(dir_ent['filename'] + " : " + str(file_date_epoch) + " : " + str(inc_date)))
+#                dprint("FILE: " + str(dir_ent['filename'] + " : " + str(file_date_epoch) + " : " + str(inc_date)))
                 if file_date_epoch > inc_date:
                     if path != delim:
 #                        files_to_restore.append(path + delim + dir_ent['filename'])
@@ -85,6 +85,35 @@ def walk_tree (rubrik, id, inc_date, delim, path, parent, files_to_restore, outf
     if file_count == 200000:
         large_trees.put(path)
     fh.close()
+    parts.put(job_id)
+
+def generate_report(parts, outfile, LOG_FORMAT):
+    if LOG_FORMAT == "log":
+        ofh = open(outfile + '.' + LOG_FORMAT, 'wb')
+        with open(outfile + '.head', 'rb') as hfh:
+            shutil.copyfileobj(hfh, ofh)
+        hfh.close()
+        ofh.close()
+    else:
+        ofh  = open(outfile + '.' + LOG_FORMAT, 'w')
+        ofh.close()
+    while True:
+        if parts.empty():
+            time.sleep(10)
+	    if exit_event.is_set():
+		break
+            else:
+                continue
+        name = parts.get()
+        dprint("CONSOLIDATING " + name)
+        with open(name, 'rb') as rfh:
+            with open(outfile + '.' + LOG_FORMAT, 'ab') as wfh:
+                shutil.copyfileobj(rfh, wfh)
+        rfh.close()
+        wfh.close()
+        if not DEBUG:
+           dprint("Deleting " + name)
+            os.remove(name)
 
 def get_job_time(snap_list, id):
     time = ""
@@ -226,6 +255,7 @@ if __name__ == "__main__":
     thread_factor = 10
     debug_log = "debug_log.txt"
     large_trees = queue.Queue()
+    parts = queue.Queue()
     SINGLE_NODE = False
     LOG_FORMAT = "csv"
 
@@ -247,6 +277,7 @@ if __name__ == "__main__":
             date_dt = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
             date_dt_s = datetime.datetime.strftime(date_dt, "%Y-%m-%d %H:%M:%S")
         if opt in ("-D", "--debug"):
+            VERBOSE = True
             DEBUG = True
             dfh = open(debug_log, "w")
             dfh.close()
@@ -404,12 +435,16 @@ if __name__ == "__main__":
         inc_date_epoch = (inc_date - datetime.datetime(1970, 1, 1)).total_seconds()
     files_to_restore = []
     dprint("INDEX: " + str(current_index) + "// DATE: " + str(inc_date_epoch))
-    threading.Thread( name=outfile, target = walk_tree, args=(rubrik, snap_list[current_index][0], inc_date_epoch,
+    threading.Thread(name=outfile, target = walk_tree, args=(rubrik, snap_list[current_index][0], inc_date_epoch,
                                                                 delim, initial_path, {}, files_to_restore, outfile)).start()
     print("Waiting for jobs to queue")
-    time.sleep(10)
-    while not job_queue.empty() or (job_queue.empty and threading.activeCount() > 1):
-        if threading.activeCount()-1 < max_threads and not job_queue.empty():
+    time.sleep(20)
+    exit_event = threading.Event()
+    threading.Thread(name='report', target=generate_report, args=(parts, outfile, LOG_FORMAT)).start()
+    first = True
+    while first or not job_queue.empty() or not parts.empty() or (parts.empty() and threading.activeCount() > 2):
+        first = False
+        if threading.activeCount()-2 < max_threads and not job_queue.empty():
             job = job_queue.get()
             print("\nQueue: " + str(job_queue.qsize()))
             print("Running Threads: " + str(threading.activeCount()-1))
@@ -418,29 +453,17 @@ if __name__ == "__main__":
             time.sleep(10)
             print("\nQueue: " + str(job_queue.qsize()))
             print("Running Threads: " + str(threading.activeCount()-1))
-#            print("Q: " + str(list(job_queue.queue)))
         else:
             print("\nWaiting on " + str(threading.activeCount()-1) + " jobs to finish.")
             time.sleep(10)
     print("\nGenerating Report")
-    log_parts = [f for f in os.listdir('.') if f.startswith(outfile) and f.endswith('.part')]
-    log_parts.sort()
-    with open(outfile + '.' + LOG_FORMAT, 'wb') as rfh:
-        if LOG_FORMAT == "log":
-            with open(outfile + '.head', 'rb') as hfh:
-                shutil.copyfileobj(hfh, rfh)
-            hfh.close()
-        for p in log_parts:
-            with open(p, 'rb') as pfh:
-                shutil.copyfileobj(pfh, rfh)
-            pfh.close()
-    rfh.close()
     if not large_trees.empty():
         print("NOTE: There is an default API browse limit of 200K files per directory.")
         print("The following directories could have more than 200K files:")
         for d in large_trees.queue:
             print(d)
         print("\nThis value can be raised by Rubrik Support. If you need this, open a case with Rubrik")
+    exit_event.set()
     if not DEBUG:
         log_clean(outfile)
     print("done")

@@ -113,7 +113,7 @@ def generate_report(parts, outfile, LOG_FORMAT):
         wfh.close()
         if not DEBUG:
            dprint("Deleting " + name)
-            os.remove(name)
+           os.remove(name)
 
 def get_job_time(snap_list, id):
     time = ""

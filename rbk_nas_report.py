@@ -7,11 +7,13 @@ import os
 import getopt
 import getpass
 import urllib3
+
 urllib3.disable_warnings()
 import datetime
 import pytz
 import time
 import threading
+
 try:
     import queue
 except ImportError:
@@ -20,14 +22,16 @@ import shutil
 from random import randrange
 from pprint import pprint
 
+
 def python_input(message):
     if int(sys.version[0]) > 2:
         val = input(message)
     else:
         val = raw_input(message)
-    return(val)
+    return (val)
 
-def walk_tree (rubrik, id, inc_date, delim, path, parent, files_to_restore, outfile):
+
+def walk_tree(rubrik, id, inc_date, delim, path, parent, files_to_restore, outfile):
     offset = 0
     done = False
     file_count = 0
@@ -46,8 +50,9 @@ def walk_tree (rubrik, id, inc_date, delim, path, parent, files_to_restore, outf
             if VERBOSE:
                 print("Starting job " + path + " on " + rubrik_cluster[job_ptr]['name'])
             else:
-                print (' . ', end='')
-        rbk_walk = rubrik_cluster[job_ptr]['session'].get('v1', '/fileset/snapshot/' + str(id) + '/browse', params=params, timeout=timeout)
+                print(' . ', end='')
+        rbk_walk = rubrik_cluster[job_ptr]['session'].get('v1', '/fileset/snapshot/' + str(id) + '/browse',
+                                                          params=params, timeout=timeout)
         file_count = 0
         for dir_ent in rbk_walk['data']:
             offset += 1
@@ -57,13 +62,13 @@ def walk_tree (rubrik, id, inc_date, delim, path, parent, files_to_restore, outf
             if dir_ent['fileMode'] == "file":
                 file_date_dt = datetime.datetime.strptime(dir_ent['lastModified'][:-5], "%Y-%m-%dT%H:%M:%S")
                 file_date_epoch = (file_date_dt - datetime.datetime(1970, 1, 1)).total_seconds()
-#                dprint("FILE: " + str(dir_ent['filename'] + " : " + str(file_date_epoch) + " : " + str(inc_date)))
+                #                dprint("FILE: " + str(dir_ent['filename'] + " : " + str(file_date_epoch) + " : " + str(inc_date)))
                 if file_date_epoch > inc_date:
                     if path != delim:
-#                        files_to_restore.append(path + delim + dir_ent['filename'])
+                        #                        files_to_restore.append(path + delim + dir_ent['filename'])
                         oprint(path + delim + str(dir_ent['filename']) + "," + str(dir_ent['size']), fh)
                     else:
-#                        files_to_restore.append(path + dir_ent['filename'])
+                        #                        files_to_restore.append(path + dir_ent['filename'])
                         oprint(path + str(dir_ent['filename']) + "," + str(dir_ent['size']), fh)
             elif dir_ent['fileMode'] == "directory" or dir_ent['fileMode'] == "drive":
                 if dir_ent['fileMode'] == "drive":
@@ -78,14 +83,16 @@ def walk_tree (rubrik, id, inc_date, delim, path, parent, files_to_restore, outf
                         new_path = "\\" + dir_ent['path']
                     else:
                         new_path = path + "\\" + dir_ent['path']
-#                files_to_restore = walk_tree(rubrik, id, inc_date, delim, new_path, dir_ent, files_to_restore)
-                job_queue.put(threading.Thread(name=new_path, target=walk_tree, args=(rubrik, id, inc_date, delim, new_path, dir_ent, files_to_restore, outfile)))
+                #                files_to_restore = walk_tree(rubrik, id, inc_date, delim, new_path, dir_ent, files_to_restore)
+                job_queue.put(threading.Thread(name=new_path, target=walk_tree, args=(
+                rubrik, id, inc_date, delim, new_path, dir_ent, files_to_restore, outfile)))
         if not rbk_walk['hasMore']:
             done = True
     if file_count == 200000:
         large_trees.put(path)
     fh.close()
     parts.put(job_id)
+
 
 def generate_report(parts, outfile, LOG_FORMAT):
     if LOG_FORMAT == "log":
@@ -95,13 +102,13 @@ def generate_report(parts, outfile, LOG_FORMAT):
         hfh.close()
         ofh.close()
     else:
-        ofh  = open(outfile + '.' + LOG_FORMAT, 'w')
+        ofh = open(outfile + '.' + LOG_FORMAT, 'w')
         ofh.close()
     while True:
         if parts.empty():
             time.sleep(10)
-	    if exit_event.is_set():
-		break
+            if exit_event.is_set():
+                break
             else:
                 continue
         name = parts.get()
@@ -112,8 +119,9 @@ def generate_report(parts, outfile, LOG_FORMAT):
         rfh.close()
         wfh.close()
         if not DEBUG:
-           dprint("Deleting " + name)
-           os.remove(name)
+            dprint("Deleting " + name)
+            os.remove(name)
+
 
 def get_job_time(snap_list, id):
     time = ""
@@ -124,12 +132,14 @@ def get_job_time(snap_list, id):
             break
     return (time)
 
+
 def dprint(message):
     if DEBUG:
         dfh = open(debug_log, 'a')
         dfh.write(message + "\n")
         dfh.close()
-    return()
+    return ()
+
 
 def oprint(message, fh):
     if not fh:
@@ -137,11 +147,13 @@ def oprint(message, fh):
     else:
         fh.write(message + "\n")
 
+
 def log_clean(name):
     files = os.listdir('.')
     for f in files:
         if f.startswith(name) and (f.endswith('.part') or f.endswith('.head')):
             os.remove(f)
+
 
 def get_rubrik_nodes(rubrik, user, password, token):
     node_list = []
@@ -164,7 +176,8 @@ def get_rubrik_nodes(rubrik, user, password, token):
                 node_list.append({'session': rbk_session, 'name': n['nodeName']})
             except KeyError:
                 node_list.append({'session': rbk_session, 'name': n['node']})
-    return(node_list)
+    return (node_list)
+
 
 def log_job_activity(rubrik, outfile, fs_id, snap_data):
     ev_series_id = ""
@@ -175,10 +188,11 @@ def log_job_activity(rubrik, outfile, fs_id, snap_data):
     dprint(str(snap_time_epoch))
     events = rubrik.get('v1', '/event/latest?limit=1024&event_type=Backup&object_ids=' + str(fs_id), timeout=timeout)
     for ev in events['data']:
-        if ev['latestEvent']['eventType'] != "Backup" or ev['eventSeriesStatus'] not in ('Success', 'Failure', 'SuccessWithWarnings'):
+        if ev['latestEvent']['eventType'] != "Backup" or ev['eventSeriesStatus'] not in (
+        'Success', 'Failure', 'SuccessWithWarnings'):
             continue
         ev_dt = datetime.datetime.strptime(ev['latestEvent']['time'][:-5], "%Y-%m-%dT%H:%M:%S")
-        ev_dt_epoch = (ev_dt - datetime.datetime(1970,1,1)).total_seconds()
+        ev_dt_epoch = (ev_dt - datetime.datetime(1970, 1, 1)).total_seconds()
         dprint("EV_DT: " + str(ev_dt_epoch))
         if ev_dt_epoch < snap_time_epoch:
             ev_series_id = event_series_id_save
@@ -206,8 +220,10 @@ def log_job_activity(rubrik, outfile, fs_id, snap_data):
     hfp.write('\n')
     hfp.close()
 
+
 def usage():
-    sys.stderr.write("Usage: rbk_nas_report.py [-hDrpasl] [-b backup] [-f fileset] [-c creds] [-t token] [-d date] [-m max_threads | -M thread_factor] -o outfile rubrik\n")
+    sys.stderr.write(
+        "Usage: rbk_nas_report.py [-hDrpasl] [-b backup] [-f fileset] [-c creds] [-t token] [-d date] [-m max_threads | -M thread_factor] -o outfile rubrik\n")
     sys.stderr.write("-h | --help : Prints Usage\n")
     sys.stderr.write("-D | --debug : Debug mode.  Prints more information\n")
     sys.stderr.write("-o | --output : Specify an output file.  Don't include an extention. [REQUIRED]\n")
@@ -221,9 +237,10 @@ def usage():
     sys.stderr.write("-s | --single_node : Only use one node of the Rubrik clsuter for API calls\n")
     sys.stderr.write("-l | --latest : Use the latest backup of the fileset\n")
     sys.stderr.write("-d | --date : Specify the exact date of the desired backup\n")
-    sys.stderr.write("-a | --all : Report all files in backup.  Default is only files backed up in that specific backkup\n")
+    sys.stderr.write(
+        "-a | --all : Report all files in backup.  Default is only files backed up in that specific backkup\n")
     sys.stderr.write("rubrik : Name or IP of the Rubrik Cluster\n")
-    exit (0)
+    exit(0)
 
 
 if __name__ == "__main__":
@@ -259,17 +276,18 @@ if __name__ == "__main__":
     SINGLE_NODE = False
     LOG_FORMAT = "csv"
 
-
     optlist, args = getopt.getopt(sys.argv[1:], 'ab:f:c:d:hDst:o:m:M:vplsF:', ["backup=", "fileset=", "creds=", "date=",
-                                                                        "help", "debug",  "token=", "output=", "max_threads=",
-                                                                        "--physical", "--all", "--latest", '--single_node'])
+                                                                               "help", "debug", "token=", "output=",
+                                                                               "max_threads=",
+                                                                               "--physical", "--all", "--latest",
+                                                                               '--single_node'])
     for opt, a in optlist:
         if opt in ("-b", "--backup"):
             backup = a
         if opt in ("-f", "--fileset"):
             fileset = a
         if opt in ("-c", "--creds"):
-            user,password = a.split (":")
+            user, password = a.split(":")
         if opt in ("-h", "--help"):
             usage()
         if opt in ("-d", "--date"):
@@ -293,7 +311,7 @@ if __name__ == "__main__":
             thread_factor = int(a)
         if opt in ('-v', '--verbose'):
             VERBOSE = True
-        if opt in ('-p' , '--physical'):
+        if opt in ('-p', '--physical'):
             physical = True
         if opt in ('-a', '--all'):
             ALL_FILES = True
@@ -324,22 +342,22 @@ if __name__ == "__main__":
     else:
         host = backup
     if not fileset:
-        fileset = python_input ("Fileset: ")
+        fileset = python_input("Fileset: ")
     if not token:
         if not user:
             user = python_input("User: ")
         if not password:
             password = getpass.getpass("Password: ")
     if not physical:
-        host, share = backup.split (":")
+        host, share = backup.split(":")
         if share.startswith("/"):
             delim = "/"
         else:
             delim = "\\"
         initial_path = delim
-#
-# Find the latest snapshot for the share and  determine the date (2nd newest snap) or use the one provided by the user
-#
+    #
+    # Find the latest snapshot for the share and  determine the date (2nd newest snap) or use the one provided by the user
+    #
     if token:
         rubrik = rubrik_cdm.Connect(rubrik_node, api_token=token)
     else:
@@ -354,7 +372,7 @@ if __name__ == "__main__":
         rubrik_cluster.append({'session': rubrik, 'name': rubrik_config['name']})
     dprint(str(rubrik_cluster))
     if max_threads == 0:
-        max_threads = thread_factor*len(rubrik_cluster)
+        max_threads = thread_factor * len(rubrik_cluster)
     print("Using up to " + str(max_threads) + " threads across " + str(len(rubrik_cluster)) + " nodes.")
     if not physical:
         hs_data = rubrik.get('internal', '/host/share', timeout=timeout)
@@ -396,7 +414,7 @@ if __name__ == "__main__":
         snap_dt_s = snap_dt.strftime('%Y-%m-%d %H:%M:%S')
         snap_list.append((s_id, snap_dt_s))
     if latest:
-        start_index = len(snap_list)-1
+        start_index = len(snap_list) - 1
         start_id = snap_list[-1][0]
     elif date:
         dprint("TDATE: " + date_dt_s)
@@ -423,20 +441,20 @@ if __name__ == "__main__":
     if not latest and not date:
         go_s = python_input("Is this correct? (y/n): ")
         if not go_s.startswith('Y') and not go_s.startswith('y'):
-            exit (0)
+            exit(0)
     current_index = int(start_index)
     if LOG_FORMAT == "log":
         log_job_activity(rubrik, outfile, fs_id, snap_list[current_index])
     if current_index == 0 or ALL_FILES:
         inc_date_epoch = 0
     else:
-        snap_info = rubrik.get('v1', '/fileset/snapshot/' + str(snap_list[current_index-1][0]), timeout=timeout)
+        snap_info = rubrik.get('v1', '/fileset/snapshot/' + str(snap_list[current_index - 1][0]), timeout=timeout)
         inc_date = datetime.datetime.strptime(snap_info['date'][:-5], "%Y-%m-%dT%H:%M:%S")
         inc_date_epoch = (inc_date - datetime.datetime(1970, 1, 1)).total_seconds()
     files_to_restore = []
     dprint("INDEX: " + str(current_index) + "// DATE: " + str(inc_date_epoch))
-    threading.Thread(name=outfile, target = walk_tree, args=(rubrik, snap_list[current_index][0], inc_date_epoch,
-                                                                delim, initial_path, {}, files_to_restore, outfile)).start()
+    threading.Thread(name=outfile, target=walk_tree, args=(rubrik, snap_list[current_index][0], inc_date_epoch,
+                                                           delim, initial_path, {}, files_to_restore, outfile)).start()
     print("Waiting for jobs to queue")
     time.sleep(20)
     exit_event = threading.Event()
@@ -444,17 +462,22 @@ if __name__ == "__main__":
     first = True
     while first or not job_queue.empty() or not parts.empty() or (parts.empty() and threading.activeCount() > 2):
         first = False
-        if threading.activeCount()-2 < max_threads and not job_queue.empty():
+        if threading.activeCount() - 2 < max_threads and not job_queue.empty():
             job = job_queue.get()
             print("\nQueue: " + str(job_queue.qsize()))
-            print("Running Threads: " + str(threading.activeCount()-1))
+            print("Running Threads: " + str(threading.activeCount() - 1))
             job.start()
         elif not job_queue.empty():
             time.sleep(10)
             print("\nQueue: " + str(job_queue.qsize()))
-            print("Running Threads: " + str(threading.activeCount()-1))
+            print("Running Threads: " + str(threading.activeCount() - 1))
         else:
-            print("\nWaiting on " + str(threading.activeCount()-1) + " jobs to finish.")
+            if DEBUG:
+                dprint(str(threading.active_count()) + " running:")
+                for t in threading.enumerate():
+                    dprint("\t " + str(t.name))
+                dprint('\n')
+            print("\nWaiting on " + str(threading.activeCount() - 1) + " jobs to finish.")
             time.sleep(10)
     print("\nGenerating Report")
     if not large_trees.empty():

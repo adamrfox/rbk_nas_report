@@ -463,9 +463,11 @@ if __name__ == "__main__":
     while first or not job_queue.empty() or not parts.empty() or (parts.empty() and threading.activeCount() > 2):
         first = False
         if threading.activeCount() - 2 < max_threads and not job_queue.empty():
+            dprint(str(list(job_queue.queue)))
             job = job_queue.get()
             print("\nQueue: " + str(job_queue.qsize()))
             print("Running Threads: " + str(threading.activeCount() - 1))
+            dprint("Started job: " + str(job))
             job.start()
         elif not job_queue.empty():
             time.sleep(10)

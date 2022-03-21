@@ -220,6 +220,17 @@ def log_job_activity(rubrik, outfile, fs_id, snap_data):
     hfp.write('\n')
     hfp.close()
 
+def job_queue_done(thread_list):
+    list_check = set([])
+    done = False
+    for thread in threading.enumerate():
+        if thread.name in thread_list:
+            list_check.add(thread.name)
+    dprint("LIST_CHECK = " + str(list_check))
+    if list_check == set(['MainThread', 'report']):
+        done = True
+    dprint("JQD returns " + str(done))
+    return(done)
 
 def usage():
     sys.stderr.write(
@@ -267,6 +278,7 @@ if __name__ == "__main__":
     ofh = ""
     timeout = 360
     rubrik_cluster = []
+    thread_list = ['MainThread']
     job_queue = queue.Queue()
     max_threads = 0
     thread_factor = 10
@@ -455,12 +467,14 @@ if __name__ == "__main__":
     dprint("INDEX: " + str(current_index) + "// DATE: " + str(inc_date_epoch))
     threading.Thread(name=outfile, target=walk_tree, args=(rubrik, snap_list[current_index][0], inc_date_epoch,
                                                            delim, initial_path, {}, files_to_restore, outfile)).start()
+    thread_list.append(outfile)
     print("Waiting for jobs to queue")
     time.sleep(20)
     exit_event = threading.Event()
     threading.Thread(name='report', target=generate_report, args=(parts, outfile, LOG_FORMAT)).start()
+    thread_list.append('report')
     first = True
-    while first or not job_queue.empty() or not parts.empty() or (parts.empty() and threading.activeCount() > 2):
+    while first or not job_queue.empty() or not parts.empty() or (parts.empty() and not job_queue_done(thread_list)):
         first = False
         if threading.activeCount() - 2 < max_threads and not job_queue.empty():
             dprint(str(list(job_queue.queue)))
@@ -469,6 +483,7 @@ if __name__ == "__main__":
             print("Running Threads: " + str(threading.activeCount() - 1))
             dprint("Started job: " + str(job))
             job.start()
+            thread_list.append(job.name)
         elif not job_queue.empty():
             time.sleep(10)
             print("\nQueue: " + str(job_queue.qsize()))

@@ -491,7 +491,8 @@ if __name__ == "__main__":
                 for t in threading.enumerate():
                     dprint("\t " + str(t.name))
                 dprint('\n')
-            print("\nWaiting on " + str(jql-1) + " jobs to finish.")
+            if jql > 0:
+                print("\nWaiting on " + str(jql-1) + " jobs to finish.")
             time.sleep(10)
     print("\nGenerating Report")
     if not large_trees.empty():

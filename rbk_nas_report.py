@@ -470,27 +470,28 @@ if __name__ == "__main__":
     exit_event = threading.Event()
     threading.Thread(name='report', target=generate_report, args=(parts, outfile, LOG_FORMAT)).start()
     first = True
-    while first or not job_queue.empty() or not parts.empty() or (parts.empty() and  job_queue_length(thread_list)):
+    while first or not job_queue.empty() or not parts.empty() or (parts.empty() and job_queue_length(thread_list)):
         first = False
-        if job_queue_length(thread_list) < max_threads and not job_queue.empty():
+        jql = job_queue_length(thread_list)
+        if jql < max_threads and not job_queue.empty():
 #            dprint(str(list(job_queue.queue)))
             job = job_queue.get()
             print("\nQueue: " + str(job_queue.qsize()))
-            print("Running Threads: " + str(threading.activeCount() - 1))
+            print("Running Threads: " + str(jql))
             dprint("Started job: " + str(job))
             job.start()
             thread_list.append(job.name)
         elif not job_queue.empty():
             time.sleep(10)
             print("\nQueue: " + str(job_queue.qsize()))
-            print("Running Threads: " + str(threading.activeCount() - 1))
+            print("Running Threads: " + str(jql))
         else:
             if DEBUG:
                 dprint(str(threading.active_count()) + " running:")
                 for t in threading.enumerate():
                     dprint("\t " + str(t.name))
                 dprint('\n')
-            print("\nWaiting on " + str(threading.activeCount() - 1) + " jobs to finish.")
+            print("\nWaiting on " + str(jql-1) + " jobs to finish.")
             time.sleep(10)
     print("\nGenerating Report")
     if not large_trees.empty():

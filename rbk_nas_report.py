@@ -203,20 +203,24 @@ def log_job_activity(rubrik, outfile, fs_id, snap_data):
     if not ev_series_id:
         ev_series_id = event_series_id_save
     dprint("EVENT_SERIES_ID: " + ev_series_id)
-    event_series = rubrik.get('v1', '/event_series/' + str(ev_series_id), timeout=timeout)
-    hfp = open(outfile + '.head', "w")
-    hfp.write('Backup:' + event_series['location'] + '\n')
-    hfp.write('Started: ' + event_series['startTime'][:-5] + '\n')
-    hfp.write('Ended: ' + event_series['endTime'][:-5] + '\n')
-    hfp.write('Duration: ' + event_series['duration'] + '\n')
-    hfp.write('Logical Size: ' + str(event_series['logicalSize']) + '\n')
-    hfp.write('Throughput: ' + str(event_series['throughput']) + ' Bps\n\n')
-    for e in reversed(event_series['eventDetailList']):
-        e_dt = datetime.datetime.strptime(e['time'][:-5], "%Y-%m-%dT%H:%M:%S")
-        e_dt_s = datetime.datetime.strftime(e_dt, "%Y-%m-%d %H:%M:%S")
-        message_list = e['eventInfo'].split('"')
-        message = message_list[3].replace('\\\\', '\\')
-        hfp.write(e_dt_s + ' ' + e['eventSeverity'] + ' ' + message + '\n')
+    if ev_series_id:
+        event_series = rubrik.get('v1', '/event_series/' + str(ev_series_id), timeout=timeout)
+        hfp = open(outfile + '.head', "w")
+        hfp.write('Backup:' + event_series['location'] + '\n')
+        hfp.write('Started: ' + event_series['startTime'][:-5] + '\n')
+        hfp.write('Ended: ' + event_series['endTime'][:-5] + '\n')
+        hfp.write('Duration: ' + event_series['duration'] + '\n')
+        hfp.write('Logical Size: ' + str(event_series['logicalSize']) + '\n')
+        hfp.write('Throughput: ' + str(event_series['throughput']) + ' Bps\n\n')
+        for e in reversed(event_series['eventDetailList']):
+            e_dt = datetime.datetime.strptime(e['time'][:-5], "%Y-%m-%dT%H:%M:%S")
+            e_dt_s = datetime.datetime.strftime(e_dt, "%Y-%m-%d %H:%M:%S")
+            message_list = e['eventInfo'].split('"')
+            message = message_list[3].replace('\\\\', '\\')
+            hfp.write(e_dt_s + ' ' + e['eventSeverity'] + ' ' + message + '\n')
+    else:
+        hfp = open(outfile + '.head', "w")
+        hfp.write("No job activity log found.")
     hfp.write('\n')
     hfp.close()
 

@@ -472,7 +472,7 @@ if __name__ == "__main__":
         if fs['name'] == fileset:
             fs_id = fs['id']
             break
-    dprint(fs_id)
+    dprint("FS_ID: " + str(fs_id))
     snap_data = rubrik.get('v1', str("/fileset/" + fs_id), timeout=timeout)
     for snap in snap_data['snapshots']:
         s_time = snap['date']

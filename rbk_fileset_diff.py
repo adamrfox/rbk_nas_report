@@ -51,23 +51,33 @@ def file_compare(job_ptr, file, cmp_id):
                 f_done = True
     return(False)
 
-def file_compare_new(job_ptr, path, file_in_base_dir, cmp_id):
+def file_compare_new(job_ptr, path, file_in_base_dir, cmp_id, fh):
     cmp_done = False
     cmp_offset = 0
+    file_in_cmp_dir = {}
     while not cmp_done:
         params = {'path': path, 'offset': cmp_offset}
-        cmp_walk = rubrik_cluster[job_ptr]['session'].get('v1','/fileset/snapshot/' + str(cmp_id) + '/browse',
+        try:
+            cmp_walk = rubrik_cluster[job_ptr]['session'].get('v1','/fileset/snapshot/' + str(cmp_id) + '/browse',
                                                           params=params, timeout=timeout)
+        except rubrik_cdm.exceptions.APICallException:
+            dprint("Directory not found: " + path)
+            oprint(path + ',' + '0', fh)
+            for f in file_in_base_dir.keys():
+                if f.startswith(path):
+                    oprint(f + ',' + str(file_in_base_dir[f]), fh)
+            break
         for cmp_ent in cmp_walk['data']:
             cmp_offset += 1
             if cmp_ent['fileMode'] == "file":
-                try:
-                    fsize = file_in_base_dir[path + delim + cmp_ent['filename']]
-                except:
-                    oprint(path + delim + cmp_ent['filename'] + ',' + str(fsize), ofh)
+                file_in_cmp_dir[path + delim + cmp_ent['filename']] = cmp_ent['size']
         if not cmp_walk['hasMore']:
             cmp_done = True
-
+    for base_file in file_in_base_dir.keys():
+        try:
+            file_in_cmp_dir[base_file]
+        except:
+            oprint(base_file + ',' + str(file_in_base_dir[base_file]), fh)
 
 def walk_tree(rubrik, id, cmp_id, delim, path, parent, files_to_restore, outfile):
     offset = 0
@@ -131,7 +141,7 @@ def walk_tree(rubrik, id, cmp_id, delim, path, parent, files_to_restore, outfile
             done = True
     if FASTER_COMPARE:
 #            pprint(files_in_base_dir)
-            file_compare_new(job_ptr, path, files_in_base_dir, cmp_id)
+            file_compare_new(job_ptr, path, files_in_base_dir, cmp_id, fh)
     if file_count == 200000:
         large_trees.put(path)
     fh.close()

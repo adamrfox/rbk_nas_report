@@ -62,22 +62,26 @@ def file_compare_new(job_ptr, path, file_in_base_dir, cmp_id, fh):
                                                           params=params, timeout=timeout)
         except rubrik_cdm.exceptions.APICallException:
             dprint("Directory not found: " + path)
-            oprint(path + ',' + '0', fh)
+            oprint(path + ',' + '0,NEW,DIRECTORY', fh)
             for f in file_in_base_dir.keys():
                 if f.startswith(path):
-                    oprint(f + ',' + str(file_in_base_dir[f]), fh)
-            break
+                    oprint(f + ',' + str(file_in_base_dir[f]['size']) + ',NEW,FILE', fh)
+            return
         for cmp_ent in cmp_walk['data']:
             cmp_offset += 1
             if cmp_ent['fileMode'] == "file":
-                file_in_cmp_dir[path + delim + cmp_ent['filename']] = cmp_ent['size']
+                file_in_cmp_dir[path + delim + cmp_ent['filename']] = {'size': cmp_ent['size'], 'time':  datetime.datetime.strptime(cmp_ent['lastModified'][:-5], '%Y-%m-%dT%H:%M:%S').timestamp()}
         if not cmp_walk['hasMore']:
             cmp_done = True
     for base_file in file_in_base_dir.keys():
         try:
             file_in_cmp_dir[base_file]
         except:
-            oprint(base_file + ',' + str(file_in_base_dir[base_file]), fh)
+            oprint(base_file + ',' + str(file_in_base_dir[base_file]['size']) + ",NEW,FILE", fh)
+            continue
+        if file_in_base_dir[base_file]['time'] != file_in_cmp_dir[base_file]['time']:
+            oprint(base_file + ',' + str(file_in_base_dir[base_file]['size']) + ",UPDATED,FILE", fh)
+
 
 def walk_tree(rubrik, id, cmp_id, delim, path, parent, files_to_restore, outfile):
     offset = 0
@@ -121,7 +125,7 @@ def walk_tree(rubrik, id, cmp_id, delim, path, parent, files_to_restore, outfile
                     if not file_compare(job_ptr, path + delim + str(dir_ent['filename']), cmp_id):
                         oprint(path + delim + str(dir_ent['filename'] + "," + str(dir_ent['size'])), fh)
                 else:
-                    files_in_base_dir[path + delim + str(dir_ent['filename'])] = dir_ent['size']
+                    files_in_base_dir[path + delim + str(dir_ent['filename'])] = {'size': dir_ent['size'], 'time': datetime.datetime.strptime(dir_ent['lastModified'][:-5], '%Y-%m-%dT%H:%M:%S').timestamp()}
             elif dir_ent['fileMode'] == "directory" or dir_ent['fileMode'] == "drive":
                 if dir_ent['fileMode'] == "drive":
                     new_path = dir_ent['filename']
@@ -157,7 +161,7 @@ def generate_report(parts, outfile, LOG_FORMAT):
         ofh.close()
     else:
         ofh = open(outfile + '.' + LOG_FORMAT, 'w')
-        print("Files found in not found in " + snap_list[int(base_index)][1] + ", not found in "+ snap_list[int(compare_index)][1] , file=ofh)
+        print("Base Backup: " + snap_list[int(base_index)][1] + "\nCompared to: " + snap_list[int(compare_index)][1] , file=ofh)
         ofh.close()
     while True:
         if parts.empty():

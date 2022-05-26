@@ -217,6 +217,8 @@ def log_clean(name):
 def get_rubrik_nodes(rubrik, user, password, token):
     node_list = []
     cluster_network = rubrik.get('internal', '/cluster/me/network_interface')
+    dprint("CLUSTER_NETWORK: ")
+    dprint(str(cluster_network))
     for n in cluster_network['data']:
         if n['interfaceType'] == "Management":
             if token:

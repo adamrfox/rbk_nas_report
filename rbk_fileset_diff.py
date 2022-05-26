@@ -235,6 +235,7 @@ def get_rubrik_nodes(rubrik, user, password, token):
                 node_list.append({'session': rbk_session, 'name': n['nodeName']})
             except KeyError:
                 node_list.append({'session': rbk_session, 'name': n['node']})
+    dprint("NODE_LIST: " + str(node_list))
     return (node_list)
 
 

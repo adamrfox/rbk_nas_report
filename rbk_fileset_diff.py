@@ -70,7 +70,7 @@ def file_compare_new(job_ptr, path, file_in_base_dir, cmp_id, fh):
         for cmp_ent in cmp_walk['data']:
             cmp_offset += 1
             if cmp_ent['fileMode'] == "file":
-                file_in_cmp_dir[path + delim + cmp_ent['filename']] = {'size': cmp_ent['size'], 'time':  datetime.datetime.strptime(cmp_ent['lastModified'][:-5], '%Y-%m-%dT%H:%M:%S').timestamp()}
+                file_in_cmp_dir[path + delim + str(cmp_ent['filename'])] = {'size': cmp_ent['size'], 'time': time.mktime(time.strptime(cmp_ent['lastModified'][:-5], '%Y-%m-%dT%H:%M:%S'))}
         if not cmp_walk['hasMore']:
             cmp_done = True
     for base_file in file_in_base_dir.keys():
@@ -125,7 +125,7 @@ def walk_tree(rubrik, id, cmp_id, delim, path, parent, files_to_restore, outfile
                     if not file_compare(job_ptr, path + delim + str(dir_ent['filename']), cmp_id):
                         oprint(path + delim + str(dir_ent['filename'] + "," + str(dir_ent['size'])), fh)
                 else:
-                    files_in_base_dir[path + delim + str(dir_ent['filename'])] = {'size': dir_ent['size'], 'time': datetime.datetime.strptime(dir_ent['lastModified'][:-5], '%Y-%m-%dT%H:%M:%S').timestamp()}
+                    files_in_base_dir[path + delim + str(dir_ent['filename'])] = {'size': dir_ent['size'], 'time': time.mktime(time.strptime(dir_ent['lastModified'][:-5], '%Y-%m-%dT%H:%M:%S'))}
             elif dir_ent['fileMode'] == "directory" or dir_ent['fileMode'] == "drive":
                 if dir_ent['fileMode'] == "drive":
                     new_path = dir_ent['filename']

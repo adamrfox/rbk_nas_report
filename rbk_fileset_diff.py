@@ -365,6 +365,7 @@ if __name__ == "__main__":
         if opt in ("-c", "--creds"):
             user, password = a.split(":")
         if opt in ("-h", "--help"):
+            dprint("Usage called via -h")
             usage()
         if opt in ("-d", "--date"):
             date = a
@@ -404,8 +405,10 @@ if __name__ == "__main__":
     try:
         rubrik_node = args[0]
     except:
+        dprint("Usage called: no Rubrik node")
         usage()
     if not outfile:
+        dprint("Usage called: No outfile")
         usage()
     log_clean(outfile)
     if not backup:

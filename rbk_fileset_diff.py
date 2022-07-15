@@ -197,9 +197,10 @@ def dprint(message):
     if DEBUG:
         if int(sys.version[0]) > 2:
             dfh = open(debug_log, 'a', encoding='utf-8')
+            dfh.write(message + "\n")
         else:
             dfh = io.open(debug_log, 'a', encoding='utf-8')
-        dfh.write(message + "\n")
+            dfh.write(unicode(message) + "\n")
         dfh.close()
     return ()
 

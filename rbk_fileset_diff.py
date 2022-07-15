@@ -13,6 +13,7 @@ import pytz
 import time
 import threading
 import random
+import io
 
 try:
     import queue
@@ -194,7 +195,10 @@ def get_job_time(snap_list, id):
 
 def dprint(message):
     if DEBUG:
-        dfh = open(debug_log, 'a')
+        if int(sys.version[0]) > 2:
+            dfh = open(debug_log, 'a', encoding='utf-8')
+        else:
+            dfh = io.open(debug_log, 'a', encoding='utf-8')
         dfh.write(message + "\n")
         dfh.close()
     return ()
